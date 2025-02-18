@@ -1,0 +1,20 @@
+package examples:go;
+
+interface invoke-str {
+    /// Invoke a component
+    call: func() -> string;
+}
+
+interface invoke-num {
+    /// Invoke a component
+    call: func() -> s32;
+}
+
+world component {
+    import wasi:cli/terminal-stdout@0.2.4;
+    //import wasi:logging/logging@0.1.0-draft;
+      
+    // This works, but can't get any decent output out yet!
+    export wasi:cli/run@0.2.4;
+    export invoke-str;
+}

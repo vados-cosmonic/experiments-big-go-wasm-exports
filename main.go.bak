@@ -1,0 +1,73 @@
+/// This file contains an example of a golang binary that is a WASM reactor module
+/// using the newly supported wasmexport directive
+
+package main
+
+import (
+	// "structs"
+	"unsafe"
+
+	//"syscall"
+
+ tstdout "github.com/mrman/go-with-exports/generated/wasi/cli/v0.2.4/terminal-stdout"
+
+	//logging "github.com/mrman/go-with-exports/generated/wasi/logging/v0.1.0-draft/logging"
+
+	//"fmt"
+	//"os"
+
+	"go.bytecodealliance.org/cm"
+)
+
+// // NOTE: this is needed because the default reactor adapter actually calls *back* into the wasm module to access
+// // an export that *should* be there, for retrieving arguments.
+// //
+// //go:export wasi:cli/environment@0.2.4#get-arguments
+// func get_arguments(ret uintptr) {
+//	list := cm.ToList([]string{"test"})
+//	ptr, len := cm.LowerList[cm.List[string]](list)
+//	addr := uint64(uintptr(unsafe.Pointer(ptr)))
+//	combined := addr << 32 | uint64((uint32)(len))
+//	ret_place := unsafe.Pointer(ret)
+//	*(*uintptr)(ret_place) = uintptr(combined)
+// }
+
+//go:wasmexport examples:go/invoke-str#call
+func invoke_str() uintptr {
+	ptr, len := cm.LowerString("Hello from Go!")
+	addr := uint64(uintptr(unsafe.Pointer(ptr)))
+	combined := addr << 32 | uint64((uint32)(len))
+	return uintptr(combined)
+}
+
+//go:wasmexport examples:go/invoke-num#call
+func invoke_num() int32 {
+	return 42
+}
+
+//go:wasmexport wasi:cli/run@0.2.4#run
+func run() cm.Result[nil] {
+	// panic("NOPE")
+	// fmt.Fprintf(os.Stderr, "Hello world!")
+	//fmt.Println("Hello world!")
+	// syscall.Write(1, []byte("test"))
+
+	//logging.Log(logging.LevelInfo, "component", "Hello from hacked together wasmexported big Go!")
+
+	stdout := tstdout.GetTerminalStdout()
+	if stdout.None() {
+		// HACK: this won't actually error properly, but it *would* cause a distinct failure
+		return 2;
+	}
+
+	// var nwritten size
+	// fd_write(int32(1), makeIOVec([]byte("test")), 1, &nwritten)
+
+	// NOTE: result<_,_> is repesented by `cm` as a bool that is turned into a u32
+	return 0
+}
+
+// This is a no-op main function, as this binary will be built into a
+// WASM reactor module, which is not entered at _start (AKA `main()`)
+//go:generate go run go.bytecodealliance.org/cmd/wit-bindgen-go generate --versioned -o ./generated ../wit
+func main() {}

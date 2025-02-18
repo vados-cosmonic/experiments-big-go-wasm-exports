@@ -17,13 +17,19 @@
 /// in the call graph of wasi:cli/run (args_sizes_get, environ_sizes_get), you can get
 /// a wasi:cli/run call to work.
 ///
-/// Should be able to get a little further once new host is released w/ WASI forwards-compat changes,
+/// Getting Go's cabi_realloc impl to work with the adapter properly *should* unlock proper memory management
+/// (https://github.com/bytecodealliance/go-modules/blob/4958c04b9d15de553f235954851732f73b5dcaee/x/cabi/realloc.go)
+///
+/// As for wasmCloud, progress should be possible once new wash pointing to the host w/ WASI forwards-compat changes,
 /// as right now the host is trying to polyfill imports like `wasi:clocks/monotonic-clock@0.2.3#now`.
 
 package main
 
 import (
 	"unsafe"
+
+	//	"fmt"
+	//	"os"
 
 	tstdout "github.com/mrman/go-with-exports/generated/wasi/cli/v0.2.4/terminal-stdout"
 
@@ -45,6 +51,8 @@ func invoke_num() int32 {
 
 //go:wasmexport wasi:cli/run@0.2.4#run
 func run() uint32 {
+	// fmt.Fprintln(os.Stderr, "hello world")
+
 	stdout := tstdout.GetTerminalStdout()
 	if stdout.None() {
 		// HACK: this won't actually error properly, but it *would* cause a distinct failure

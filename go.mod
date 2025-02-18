@@ -1,4 +1,4 @@
-module github.com/mrman/go-with-exports
+module go-with-exports
 
 go 1.23.5
 

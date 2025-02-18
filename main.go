@@ -31,7 +31,7 @@ import (
 	//	"fmt"
 	//	"os"
 
-	tstdout "github.com/mrman/go-with-exports/generated/wasi/cli/v0.2.4/terminal-stdout"
+	tstdout "go-with-exports/generated/wasi/cli/v0.2.4/terminal-stdout"
 
 	"go.bytecodealliance.org/cm"
 )

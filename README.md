@@ -7,12 +7,14 @@ Now that Go 1.24 has WASM exports via `//go:wasmexport`, this repo explores how 
 We get a little further but not very far -- two huge caveats:
 
 - We need a custom Go binary w/ changes that [fix a bug with duplicate imports](https://go-review.googlesource.com/c/go/+/629857)
-- We need a hacked adapter that avoids trying to allocate (anything that triggers the go runtime will panic, trying to start a goroutine and allocate)
-  - The relevant failure is [in the adapter, due to `cabi_realloc` not yet working from Go](https://github.com/bytecodealliance/wasmtime/blob/9afc64b4728d6e2067aa52331ff7b1d6f5275b5e/crates/wasi-preview1-component-adapter/src/lib.rs#L2745)
+  - see [GH Issue](https://github.com/golang/go/issues/60525)
+- We need a hacked WASI P1 adapter that avoids trying to allocate, because `cabi_realloc` and state saving in the adapter doesn't work properly.
+  - The relevant failure is [in the adapter, due to data allocated via `cabi_realloc` in Go not working quite right](https://github.com/bytecodealliance/wasmtime/blob/9afc64b4728d6e2067aa52331ff7b1d6f5275b5e/crates/wasi-preview1-component-adapter/src/lib.rs#L2745)
+  - The broken behavior is triggered by the runtime attempting to start/do anything, like panic or allocate during an import
 
 ## Setup
 
-You'll need two things for this build to "work":
+If you want to run this locally, you'll need two things for this build to "work":
 
 - Custom build of `go` w/ the duplicate imports fixed
 - Hacked adapter stored locally (there's already one here)
@@ -48,11 +50,11 @@ Does something in Golang runtime setup clear out/zero out allocated memory, or a
 Note that the same `assert`s placed after `State::new` do *not* trigger -- so somehow `State` is properly initialized (i.e. `state.magic1`, `state.magic2` are set) *before* returning, then once back in `State::with` they are *not* set.
 
 ### Symptom: `import allocator already set`
-  - You can get here if you do the dangerous thing and disable the state magic checks
-  - It *seems* that Go is calling imports while inside another import (or possibly at the same time as something else is trying?)
-  - Trying to replace the `Cell` in a `Mutex` results in unsupported section error
 
-Exmaple stacktrace:
+- You can get here if you do the dangerous thing and disable the state magic checks
+- It *seems* that Go is calling imports while inside another import (or possibly at the same time as something else is trying?)
+
+Example stacktrace:
 
 ```
 unreachable executed at adapter line 2926: import allocator already set
@@ -71,5 +73,8 @@ Caused by:
            7: 0x1038cc - <unknown>!_rt0_wasm_wasip1_lib
     1: wasm trap: wasm `unreachable` instruction executed
 ```
+
+> [!NOTE]
+> Similar, but *distinct* from the other one, note the different line number & message
 
 This *might* be fixable by increasing the number of import allocators available and naming them somehow to avoid collisions/someone taking an allocator that a specific operation was expecting to be present. It's not clear this *should* be how it works though.
